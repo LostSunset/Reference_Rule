@@ -35,6 +35,8 @@
   Reason: Codex and Claude Code use different convention files, but both need the same log behavior.
 - Decision: Configure branch protection so normal collaborators must use PRs while admins can still push directly.
   Reason: The owner requested direct maintenance push ability while keeping collaborator changes reviewable.
+- Decision: Avoid rewriting `reference_rule_manifest.json` when only `generated_at` would change.
+  Reason: Routine validation should not leave a dirty git worktree when the manifest content is otherwise unchanged.
 
 ## Commands And Checks
 
@@ -48,6 +50,8 @@
   Result: Published the first `main` branch to `https://github.com/LostSunset/Reference_Rule.git`.
 - Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\configure_branch_protection.ps1 -Repository LostSunset/Reference_Rule -Branch main`
   Result: Branch protection configured for `main`; pull request review is required, stale reviews are dismissed, conversations must be resolved, force pushes and branch deletions are disabled, and admin enforcement is disabled so the owner/admin can still push directly.
+- Command: `uv run --python 3.12 python reference_rule_sync.py validate --root .`
+  Result: Re-ran after the manifest timestamp fix; validation passed without changing the manifest.
 
 ## Upstream / Reference Impact
 

@@ -474,11 +474,24 @@ def write_manifest(root: Path, records: list[SourceRecord], upstream_results: li
 
     manifest = {
         "schema_version": "1.0",
-        "generated_at": now_utc(),
+        "generated_at": None,
         "reference_sources": [source_summary(record) for record in records if record.metadata],
         "upstream_repositories": upstream_results,
         "issues": issues,
     }
+
+    manifest_path = root / MANIFEST_NAME
+    if manifest_path.exists():
+        try:
+            current = read_json(manifest_path)
+            comparable = dict(current)
+            comparable["generated_at"] = None
+            if comparable == manifest:
+                return
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    manifest["generated_at"] = now_utc()
     write_json(root / MANIFEST_NAME, manifest)
 
 
@@ -610,4 +623,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
