@@ -44,6 +44,10 @@
   Result: Passed on the local empty rule pack before publishing.
 - Command: sandbox metadata dry-run with one fake journal and one fake GitHub URL.
   Result: Created an upstream wrapper in dry-run mode.
+- Command: `git push -u origin main`
+  Result: Published the first `main` branch to `https://github.com/LostSunset/Reference_Rule.git`.
+- Command: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\configure_branch_protection.ps1 -Repository LostSunset/Reference_Rule -Branch main`
+  Result: Branch protection configured for `main`; pull request review is required, stale reviews are dismissed, conversations must be resolved, force pushes and branch deletions are disabled, and admin enforcement is disabled so the owner/admin can still push directly.
 
 ## Upstream / Reference Impact
 
@@ -52,6 +56,5 @@
 
 ## Follow-up
 
-- Remaining work: Push the first commit to `main` and apply branch protection to `main`.
-- Risks: GitHub branch protection depends on the active `gh` token having admin access.
-
+- Remaining work: None for the initial rule pack setup.
+- Risks: Branch protection lets repository admins bypass PR requirements by design, matching the owner request. Non-admin collaborators must use pull requests.
