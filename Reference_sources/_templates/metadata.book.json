@@ -16,6 +16,12 @@
     "enabled": true,
     "directory": "reading_pages",
     "dpi": 180,
+    "strategy": "auto",
+    "max_full_pages": 120,
+    "max_chunked_pages": 500,
+    "chunk_size": 100,
+    "front_matter_pages": 12,
+    "unknown_page_count_strategy": "defer_full",
     "status": "recommended"
   },
   "key_pages": [

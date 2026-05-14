@@ -8,6 +8,7 @@
 - `upstream/` 保存文獻或手冊中提到的外部程式碼專案，但永遠以唯讀 wrapper 方式管理。
 - `docs/development-logs/` 保存開發者日誌與 AI 日誌規則。
 - `reference_rule_sync.py` 讓每個專案的 AI 可以自動初始化、驗證、轉換關鍵頁 PNG、同步 upstream repo，並產生追溯 manifest。
+- 當文件頁數太多時，同步器依 `image_reading.strategy` 自動選擇全文、分批全文、選擇性轉圖或延後轉圖。
 
 ## 快速使用
 

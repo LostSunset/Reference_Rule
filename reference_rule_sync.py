@@ -412,6 +412,137 @@ def find_pdf_for_record(record: SourceRecord) -> Path | None:
     return None
 
 
+def positive_int(value: Any, default: int, minimum: int = 1) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed >= minimum else default
+
+
+def merge_page_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    clean = sorted((start, end) for start, end in ranges if start > 0 and end >= start)
+    if not clean:
+        return []
+    merged = [clean[0]]
+    for start, end in clean[1:]:
+        prev_start, prev_end = merged[-1]
+        if start <= prev_end + 1:
+            merged[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def chunk_ranges(page_count: int, chunk_size: int) -> list[tuple[int, int]]:
+    return [(start, min(start + chunk_size - 1, page_count)) for start in range(1, page_count + 1, chunk_size)]
+
+
+def key_page_ranges(key_pages: list[Any], page_count: int | None) -> list[tuple[int, int]]:
+    ranges = []
+    for item in key_pages:
+        if not isinstance(item, dict):
+            continue
+        page = item.get("page")
+        if not isinstance(page, int) or page < 1:
+            continue
+        if page_count is not None and page > page_count:
+            continue
+        ranges.append((page, page))
+    return ranges
+
+
+def decide_image_reading_plan(
+    config: dict[str, Any],
+    page_count: int | None,
+    key_pages: list[Any],
+) -> dict[str, Any]:
+    if not bool(config.get("enabled", True)):
+        return {"mode": "disabled", "ranges": [], "reason": "image_reading is disabled"}
+
+    strategy = str(config.get("strategy") or "auto")
+    max_full_pages = positive_int(config.get("max_full_pages"), 120)
+    max_chunked_pages = positive_int(config.get("max_chunked_pages"), 500)
+    chunk_size = positive_int(config.get("chunk_size"), 100)
+    front_matter_pages = positive_int(config.get("front_matter_pages"), 12)
+    key_ranges = key_page_ranges(key_pages, page_count)
+
+    if strategy in {"deferred", "skip"}:
+        return {
+            "mode": "deferred",
+            "ranges": merge_page_ranges(key_ranges),
+            "reason": "full reading image conversion was deferred by metadata",
+        }
+
+    if page_count is None:
+        unknown_strategy = str(config.get("unknown_page_count_strategy") or "defer_full")
+        if unknown_strategy == "key_pages_only":
+            mode = "selective"
+        else:
+            mode = "deferred"
+        return {
+            "mode": mode,
+            "ranges": merge_page_ranges(key_ranges),
+            "reason": "page count is unknown; full conversion is deferred to avoid excessive output",
+        }
+
+    if strategy == "full":
+        return {"mode": "full", "ranges": [(1, page_count)], "reason": "full conversion forced by metadata"}
+
+    if strategy == "chunked_full":
+        return {
+            "mode": "chunked_full",
+            "ranges": chunk_ranges(page_count, chunk_size),
+            "reason": "chunked full conversion forced by metadata",
+        }
+
+    if strategy == "selective":
+        selected = [(1, min(front_matter_pages, page_count))]
+        selected.extend(key_ranges)
+        return {
+            "mode": "selective",
+            "ranges": merge_page_ranges(selected),
+            "reason": "selective conversion forced by metadata",
+        }
+
+    if page_count <= max_full_pages:
+        return {"mode": "full", "ranges": [(1, page_count)], "reason": "page count is within max_full_pages"}
+
+    if page_count <= max_chunked_pages:
+        return {
+            "mode": "chunked_full",
+            "ranges": chunk_ranges(page_count, chunk_size),
+            "reason": "page count is within max_chunked_pages",
+        }
+
+    selected = [(1, min(front_matter_pages, page_count))]
+    selected.extend(key_ranges)
+    return {
+        "mode": "selective",
+        "ranges": merge_page_ranges(selected),
+        "reason": "page count exceeds max_chunked_pages",
+    }
+
+
+def get_pdf_page_count(pdf_path: Path) -> int | None:
+    pdfinfo = shutil.which("pdfinfo")
+    if pdfinfo:
+        code, out, _ = run([pdfinfo, str(pdf_path)])
+        if code == 0:
+            match = re.search(r"^Pages:\s+(\d+)\s*$", out, re.MULTILINE)
+            if match:
+                return int(match.group(1))
+
+    mutool = shutil.which("mutool")
+    if mutool:
+        code, out, _ = run([mutool, "info", str(pdf_path)])
+        if code == 0:
+            match = re.search(r"^Pages:\s+(\d+)\s*$", out, re.MULTILINE)
+            if match:
+                return int(match.group(1))
+    return None
+
+
 def default_summary_html(record: SourceRecord) -> str:
     meta = record.metadata
     title = html.escape(str(meta.get("title") or record.source_dir.name))
@@ -508,7 +639,42 @@ def image_reading_config(record: SourceRecord) -> dict[str, Any]:
         "directory": str(raw.get("directory") or "reading_pages"),
         "dpi": int(raw.get("dpi") or 180),
         "status": str(raw.get("status") or "recommended"),
+        "strategy": str(raw.get("strategy") or "auto"),
+        "max_full_pages": positive_int(raw.get("max_full_pages"), 120),
+        "max_chunked_pages": positive_int(raw.get("max_chunked_pages"), 500),
+        "chunk_size": positive_int(raw.get("chunk_size"), 100),
+        "front_matter_pages": positive_int(raw.get("front_matter_pages"), 12),
+        "unknown_page_count_strategy": str(raw.get("unknown_page_count_strategy") or "defer_full"),
     }
+
+
+def render_pdf_ranges(
+    pdf_path: Path,
+    output_dir: Path,
+    ranges: list[tuple[int, int]],
+    dpi: int,
+    dry_run: bool,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    pdftoppm = shutil.which("pdftoppm")
+    mutool = shutil.which("mutool")
+    if not pdftoppm and not mutool:
+        return [Issue("warning", "Cannot render reading_pages because pdftoppm or mutool is not available.", str(pdf_path))]
+
+    if not dry_run:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    for start, end in ranges:
+        if pdftoppm:
+            prefix = output_dir / "page"
+            cmd = [pdftoppm, "-f", str(start), "-l", str(end), "-png", "-r", str(dpi), str(pdf_path), str(prefix)]
+        else:
+            page_spec = str(start) if start == end else f"{start}-{end}"
+            cmd = [mutool, "draw", "-o", str(output_dir / "page_%03d.png"), "-r", str(dpi), str(pdf_path), page_spec]
+        code, out, err = run(cmd, dry_run=dry_run)
+        if code != 0:
+            issues.append(Issue("error", f"Failed to render reading pages {start}-{end}: {err or out}", str(pdf_path)))
+    return issues
 
 
 def render_reading_pages(record: SourceRecord, dry_run: bool = False) -> list[Issue]:
@@ -529,43 +695,44 @@ def render_reading_pages(record: SourceRecord, dry_run: bool = False) -> list[Is
     if existing_pngs:
         return issues
 
-    pdftoppm = shutil.which("pdftoppm")
-    mutool = shutil.which("mutool")
-    if not pdftoppm and not mutool:
+    page_count = get_pdf_page_count(pdf_path)
+    plan = decide_image_reading_plan(config, page_count, record.metadata.get("key_pages", []) or [])
+    if plan["mode"] == "disabled":
+        return issues
+    if plan["mode"] == "deferred":
         issues.append(
             Issue(
                 "warning",
-                "Cannot render reading_pages because pdftoppm or mutool is not available.",
+                f"Full reading page conversion deferred: {plan['reason']}",
                 str(record.metadata_path),
             )
         )
+        if not dry_run:
+            meta = record.metadata
+            meta["image_reading"] = {
+                **config,
+                "page_count": page_count,
+                "status": "deferred",
+                "last_plan": plan,
+                "last_planned_at": now_utc(),
+            }
+            write_json(record.metadata_path, meta)
         return issues
 
-    if not dry_run:
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-    if pdftoppm:
-        prefix = output_dir / "page"
-        cmd = ["pdftoppm", "-png", "-r", str(config["dpi"]), str(pdf_path), str(prefix)]
-    else:
-        cmd = ["mutool", "draw", "-o", str(output_dir / "page_%03d.png"), "-r", str(config["dpi"]), str(pdf_path)]
-
-    code, out, err = run(cmd, dry_run=dry_run)
-    if code != 0:
-        issues.append(Issue("error", f"Failed to render reading pages: {err or out}", str(pdf_path)))
+    render_issues = render_pdf_ranges(pdf_path, output_dir, plan["ranges"], config["dpi"], dry_run=dry_run)
+    issues.extend(render_issues)
+    if any(issue.level == "error" for issue in render_issues):
         return issues
 
     meta = record.metadata
-    previous = meta.get("image_reading")
     updated = {
-        "enabled": config["enabled"],
-        "directory": config["directory"],
-        "dpi": config["dpi"],
-        "status": "rendered" if not dry_run else config["status"],
+        **config,
+        "page_count": page_count,
+        "status": "rendered" if plan["mode"] in {"full", "chunked_full"} else "selective_rendered",
+        "last_plan": plan,
     }
     if not dry_run:
         updated["last_rendered_at"] = now_utc()
-    if previous != updated and not dry_run:
         meta["image_reading"] = updated
         write_json(record.metadata_path, meta)
     return issues

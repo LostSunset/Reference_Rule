@@ -131,6 +131,12 @@ Reference_sources/<Category>/<source_id>/reading_pages/
     "enabled": true,
     "directory": "reading_pages",
     "dpi": 180,
+    "strategy": "auto",
+    "max_full_pages": 120,
+    "max_chunked_pages": 500,
+    "chunk_size": 100,
+    "front_matter_pages": 12,
+    "unknown_page_count_strategy": "defer_full",
     "status": "recommended"
   }
 }
@@ -139,9 +145,44 @@ Reference_sources/<Category>/<source_id>/reading_pages/
 規則：
 
 - `enabled: true` 時，`python reference_rule_sync.py sync --root .` 會嘗試把 PDF 全文轉成 PNG。
+- `strategy: auto` 時，同步器會依頁數選擇轉圖方式。
 - 若系統沒有 `pdftoppm` 或 `mutool`，同步器會保留 warning，不中斷其他同步。
 - 大型書籍可以先只轉 `key_pages/`；若暫時不轉全文，必須把 `image_reading.status` 寫成 `deferred`，並在 `notes` 說明原因。
 - `reading_pages/` 是給 AI 閱讀用的頁面影像，不取代原始 PDF。
+
+### 頁數太多時的轉圖策略
+
+AI 與同步器必須先判斷 PDF 頁數，再決定如何轉成圖片：
+
+| 頁數 | 預設策略 | 輸出 |
+| --- | --- | --- |
+| `1-120` 頁 | `full` | 全文一次轉成 `reading_pages/` |
+| `121-500` 頁 | `chunked_full` | 每 `100` 頁分批轉成 `reading_pages/` |
+| `501+` 頁 | `selective` | 只轉前 `12` 頁與 metadata 裡的 `key_pages` |
+| 無法判斷頁數 | `deferred` | 不做全文轉圖，只保留 warning 並依 `key_pages` 規則處理 |
+
+可在 metadata 中調整門檻：
+
+```json
+{
+  "image_reading": {
+    "strategy": "auto",
+    "max_full_pages": 120,
+    "max_chunked_pages": 500,
+    "chunk_size": 100,
+    "front_matter_pages": 12,
+    "unknown_page_count_strategy": "defer_full"
+  }
+}
+```
+
+策略說明：
+
+- `full`：強制全文轉圖，適合短文件。
+- `chunked_full`：強制分批全文轉圖，適合中型文件或避免單次命令太重。
+- `selective`：只轉封面、目錄、前置頁與 `key_pages`，適合大型書籍或超長手冊。
+- `deferred`：暫緩全文轉圖，但仍應補 `summary.html` 和 `key_pages`。
+- `auto`：由同步器依上表自動選擇。
 
 ## HTML 重點摘要規則
 
