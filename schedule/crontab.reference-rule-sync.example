@@ -1,0 +1,5 @@
+# Edit /path/to/project before installing.
+# Runs every day at 03:20 local time.
+
+20 3 * * * cd /path/to/project && /usr/bin/env python3 reference_rule_sync.py sync --root . >> reference_rule_sync.log 2>&1
+

@@ -1,0 +1,30 @@
+{
+  "id": "book-author-year-short-title",
+  "type": "book",
+  "title": "Book Title",
+  "authors": ["Author Name"],
+  "year": "unknown",
+  "publisher": "unknown",
+  "source_url": "https://example.com/book",
+  "downloaded_at": "2026-05-14",
+  "downloaded_by": "AI",
+  "license": "unknown",
+  "local_files": ["source.pdf"],
+  "hashes": {},
+  "key_pages": [
+    {
+      "page": 1,
+      "label": "important-formula-or-table",
+      "reason": "Why this page is important.",
+      "png": "key_pages/page_001_important-formula-or-table.png"
+    }
+  ],
+  "upstream_repositories": [
+    {
+      "url": "https://github.com/owner/repo",
+      "reason": "Code or examples referenced by this book."
+    }
+  ],
+  "notes": "Why this source was added."
+}
+

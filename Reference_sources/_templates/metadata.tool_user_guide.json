@@ -1,0 +1,30 @@
+{
+  "id": "guide-org-year-short-title",
+  "type": "tool_user_guide",
+  "title": "Tool User Guide Title",
+  "authors": ["Organization Name"],
+  "year": "unknown",
+  "version": "unknown",
+  "source_url": "https://example.com/guide",
+  "downloaded_at": "2026-05-14",
+  "downloaded_by": "AI",
+  "license": "unknown",
+  "local_files": ["source.pdf"],
+  "hashes": {},
+  "key_pages": [
+    {
+      "page": 1,
+      "label": "api-parameter-table",
+      "reason": "Why this page is important.",
+      "png": "key_pages/page_001_api-parameter-table.png"
+    }
+  ],
+  "upstream_repositories": [
+    {
+      "url": "https://github.com/owner/repo",
+      "reason": "Official examples, SDK, tool source, or guide-referenced project."
+    }
+  ],
+  "notes": "Why this guide was added."
+}
+

@@ -1,0 +1,31 @@
+{
+  "id": "journal-author-year-short-title",
+  "type": "journal",
+  "title": "Paper Title",
+  "authors": ["Author Name"],
+  "year": "unknown",
+  "venue": "unknown",
+  "doi": "unknown",
+  "source_url": "https://example.com/paper",
+  "downloaded_at": "2026-05-14",
+  "downloaded_by": "AI",
+  "license": "unknown",
+  "local_files": ["source.pdf"],
+  "hashes": {},
+  "key_pages": [
+    {
+      "page": 1,
+      "label": "method-or-equation",
+      "reason": "Why this page is important.",
+      "png": "key_pages/page_001_method-or-equation.png"
+    }
+  ],
+  "upstream_repositories": [
+    {
+      "url": "https://github.com/owner/repo",
+      "reason": "Official implementation, reproduction code, or project referenced by this paper."
+    }
+  ],
+  "notes": "Why this source was added."
+}
+

@@ -1,0 +1,34 @@
+name: Reference Rule Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 19 * * *" # 03:20 Asia/Taipei
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install optional PDF renderer
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Sync reference rules
+        run: python reference_rule_sync.py sync --root .
+
+      - name: Commit manifest and wrapper metadata
+        run: |
+          git config user.name "reference-rule-sync"
+          git config user.email "reference-rule-sync@example.invalid"
+          git add reference_rule_manifest.json Reference_sources upstream
+          git diff --cached --quiet || git commit -m "chore: sync reference rules"
+          git push
+
