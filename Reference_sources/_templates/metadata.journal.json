@@ -12,6 +12,13 @@
   "license": "unknown",
   "local_files": ["source.pdf"],
   "hashes": {},
+  "summary_html": "summary.html",
+  "image_reading": {
+    "enabled": true,
+    "directory": "reading_pages",
+    "dpi": 180,
+    "status": "recommended"
+  },
   "key_pages": [
     {
       "page": 1,
@@ -28,4 +35,3 @@
   ],
   "notes": "Why this source was added."
 }
-

@@ -26,6 +26,10 @@ Reference_sources/<Category>/<source_id>/
   metadata.json
   source.pdf
   notes.md
+  summary.html
+  reading_pages/
+    page-1.png
+    page-2.png
   key_pages/
     page_012.png
     page_137_formula-2-4.png
@@ -64,6 +68,13 @@ guide-nvidia-2025-cuda-c-programming-guide
   "hashes": {
     "source.pdf": "sha256:<filled-by-sync-script>"
   },
+  "summary_html": "summary.html",
+  "image_reading": {
+    "enabled": true,
+    "directory": "reading_pages",
+    "dpi": 180,
+    "status": "recommended"
+  },
   "key_pages": [
     {
       "page": 3,
@@ -97,8 +108,58 @@ guide-nvidia-2025-cuda-c-programming-guide
 - `license`：授權資訊；未知時填 `unknown`，但不要空白。
 - `local_files`：此來源資料夾內保存的原始檔案。
 - `hashes`：由同步器填入或更新。
+- `summary_html`：此來源的 HTML 重點摘要，預設 `summary.html`。
+- `image_reading`：全文轉圖片閱讀設定；期刊、書籍、工具文件建議啟用。
 - `key_pages`：需要被轉成 PNG 的頁面。
 - `upstream_repositories`：文獻或手冊中提到、需要同步到 `upstream/` 的 repo。
+
+## 全文圖片閱讀規則
+
+期刊、書籍、工具文件建議都轉成圖片閱讀，讓 AI 在跨工具、跨環境時可以用穩定的視覺頁面檢查公式、表格、圖、排版與上下文。
+
+每個來源的全文頁面 PNG 建議放在：
+
+```text
+Reference_sources/<Category>/<source_id>/reading_pages/
+```
+
+同步器會讀取 metadata 的 `image_reading`：
+
+```json
+{
+  "image_reading": {
+    "enabled": true,
+    "directory": "reading_pages",
+    "dpi": 180,
+    "status": "recommended"
+  }
+}
+```
+
+規則：
+
+- `enabled: true` 時，`python reference_rule_sync.py sync --root .` 會嘗試把 PDF 全文轉成 PNG。
+- 若系統沒有 `pdftoppm` 或 `mutool`，同步器會保留 warning，不中斷其他同步。
+- 大型書籍可以先只轉 `key_pages/`；若暫時不轉全文，必須把 `image_reading.status` 寫成 `deferred`，並在 `notes` 說明原因。
+- `reading_pages/` 是給 AI 閱讀用的頁面影像，不取代原始 PDF。
+
+## HTML 重點摘要規則
+
+每個期刊、書籍、工具文件都必須有一個 HTML 重點摘要：
+
+```text
+Reference_sources/<Category>/<source_id>/summary.html
+```
+
+同步器會在缺少 `summary.html` 時自動建立摘要模板。AI 新增或閱讀來源後，應把模板補成可用摘要，至少包含：
+
+- 這份來源要解決的問題。
+- 專案應該採用的重點結論。
+- 重要公式、表格、圖與其頁碼。
+- 與程式碼、工具、API、資料集、upstream repo 的關聯。
+- 使用限制、授權或可信度注意事項。
+
+HTML 摘要應該保持可離線閱讀，不依賴外部 CSS 或 JavaScript。
 
 ## 關鍵頁 PNG 規則
 

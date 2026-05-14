@@ -41,7 +41,7 @@ python reference_rule_sync.py sync --root .
 python reference_rule_sync.py sync-upstream --root .
 ```
 
-只把 metadata 裡指定的 PDF 關鍵頁轉成 PNG：
+把 metadata 裡指定的 PDF 關鍵頁和建議的全文閱讀頁轉成 PNG，並補齊 `summary.html`：
 
 ```bash
 python reference_rule_sync.py render-pages --root .
@@ -64,8 +64,10 @@ AI 必須做到：
 2. 建立或更新 `metadata.json`。
 3. 記錄來源 URL、DOI、ISBN、下載日期、hash、授權資訊、使用理由。
 4. 如果文件中有公式、表格、流程圖、演算法或關鍵定義，將對應頁面轉成 PNG 存在該來源資料夾的 `key_pages/`。
-5. 如果文件提到可重現研究、官方工具、範例程式、GitHub/GitLab repo，必須把 repo 登記到 metadata 的 `upstream_repositories`，再用同步器放入 `upstream/`。
-6. 永遠不要修改 `upstream/**/repo/` 內的檔案。需要改動時，寫在專案自己的 adapter、patch、note 或 fork。
+5. 期刊、書籍、工具文件建議轉成全文圖片閱讀頁，放在各來源資料夾的 `reading_pages/`。
+6. 每份期刊、書籍、工具文件都要有 `summary.html`，記錄重點摘要、關鍵頁碼、公式、表格、圖與 upstream 關聯。
+7. 如果文件提到可重現研究、官方工具、範例程式、GitHub/GitLab repo，必須把 repo 登記到 metadata 的 `upstream_repositories`，再用同步器放入 `upstream/`。
+8. 永遠不要修改 `upstream/**/repo/` 內的檔案。需要改動時，寫在專案自己的 adapter、patch、note 或 fork。
 
 ## 建議排程
 
